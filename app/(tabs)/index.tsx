@@ -2,7 +2,9 @@ import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MEAL_LABELS, MEAL_TYPES } from '../../src/constants/meals';
+import { MacroProgressCard } from '../../src/components/cards/MacroProgressCard';
+import { MealSectionCard } from '../../src/components/cards/MealSectionCard';
+import { MEAL_TYPES } from '../../src/constants/meals';
 import { useDashboardData } from '../../src/hooks/useDashboardData';
 import { getTodayDateString } from '../../src/utils/dateUtils';
 
@@ -41,15 +43,7 @@ export default function DashboardScreen() {
         <Text style={styles.title}>Macly</Text>
         <Text style={styles.subtitle}>Today&apos;s Progress</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Calories</Text>
-          <Text style={styles.cardValue}>
-            {data.progress.calories.consumed} / {data.progress.calories.goal} kcal
-          </Text>
-          <Text style={styles.cardSubValue}>
-            {data.progress.calories.percentage.toFixed(0)}% complete • {data.progress.calories.remaining} kcal left
-          </Text>
-        </View>
+        <MacroProgressCard title="Calories" metric={data.progress.calories} unit="kcal" />
 
         <View style={styles.row}>
           <View style={styles.metricBox}>
@@ -73,23 +67,7 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Meals Today</Text>
           {MEAL_TYPES.map((mealType) => {
             const meal = data.meals[mealType];
-            return (
-              <View key={mealType} style={styles.mealCard}>
-                <Text style={styles.mealTitle}>{MEAL_LABELS[mealType]}</Text>
-                <Text style={styles.mealSummary}>
-                  {meal.totals.calories} kcal • P {meal.totals.proteinG} • C {meal.totals.carbsG} • F {meal.totals.fatG}
-                </Text>
-                {meal.items.length === 0 ? (
-                  <Text style={styles.emptyMealText}>No entries yet.</Text>
-                ) : (
-                  meal.items.map((item) => (
-                    <Text key={item.id} style={styles.mealItemText}>
-                      {item.food.name} ({item.quantityG}g)
-                    </Text>
-                  ))
-                )}
-              </View>
-            );
+            return <MealSectionCard key={mealType} mealType={mealType} meal={meal} />;
           })}
         </View>
       </ScrollView>
@@ -126,29 +104,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 16,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  cardValue: {
-    marginTop: 6,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  cardSubValue: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#374151',
-  },
   row: {
     flexDirection: 'row',
     gap: 8,
@@ -184,33 +139,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 8,
-  },
-  mealCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 12,
-    marginBottom: 10,
-  },
-  mealTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  mealSummary: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#374151',
-  },
-  emptyMealText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  mealItemText: {
-    marginTop: 6,
-    fontSize: 13,
-    color: '#111827',
   },
 });
