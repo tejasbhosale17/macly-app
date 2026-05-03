@@ -225,11 +225,30 @@ export default function AddFoodScreen() {
           </View>
         )}
 
-        {/* Add Food Button */}
-        <Pressable style={styles.addButton} onPress={() => setShowAddFoodSheet(true)} disabled={isActionLoading}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-          <Text style={styles.addButtonText}>Add Food</Text>
-        </Pressable>
+        <View style={styles.actionButtons}>
+          <Pressable style={styles.addButton} onPress={() => setShowAddFoodSheet(true)} disabled={isActionLoading}>
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+            <Text style={styles.addButtonText}>Add Food</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.savedMealsButton}
+            disabled={isActionLoading}
+            onPress={() =>
+              router.push({
+                pathname: '/meals/saved',
+                params: {
+                  date,
+                  mealType,
+                  mealId: String(meal.meal.id),
+                },
+              })
+            }
+          >
+            <Ionicons name="bookmark" size={18} color="#111827" />
+            <Text style={styles.savedMealsButtonText}>Use Saved Meal</Text>
+          </Pressable>
+        </View>
       </ScrollView>
 
       {/* Add Food Sheet Modal */}
@@ -415,6 +434,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  actionButtons: {
+    marginTop: 12,
+    gap: 8,
+  },
   addButton: {
     backgroundColor: '#0E9F6E',
     borderRadius: 8,
@@ -424,11 +447,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 12,
   },
   addButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  savedMealsButton: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  savedMealsButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
   },
 });
