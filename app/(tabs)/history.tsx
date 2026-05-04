@@ -1,229 +1,128 @@
-import { useCallback, useMemo, useState } from 'react';
+﻿import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { MEAL_LABELS, MEAL_TYPES } from '../../src/constants/meals';
-import { useDashboardData } from '../../src/hooks/useDashboardData';
-import { useFoods } from '../../src/hooks/useFoods';
-import { useHistory } from '../../src/hooks/useHistory';
-import {
-  createFoodLogEntry,
-  deleteFoodLogEntry,
-  updateFoodLogEntry,
-} from '../../src/services/logService';
-import type { MealType } from '../../src/types';
-import { getTodayDateString } from '../../src/utils/dateUtils';
-
-function toPositiveNumber(value: string): number | null {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
+import { WeeklyCaloriesChart } from '../../src/features/history/components/WeeklyCaloriesChart';
+import { useHistorySummary } from '../../src/features/history/hooks/useHistorySummary';
+import { colors } from '../../src/theme/colors';
 
 export default function HistoryScreen() {
-  const today = getTodayDateString();
-  const { data: dashboard, refresh: refreshDashboard } = useDashboardData(today);
-  const { history, refresh: refreshHistory } = useHistory(14);
-
-  const [selectedMealType, setSelectedMealType] = useState<MealType>('breakfast');
-  const [foodQuery, setFoodQuery] = useState<string>('');
-  const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null);
-  const [gramsInput, setGramsInput] = useState<string>('100');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const { foods } = useFoods(foodQuery);
-
-  const selectedFoodName = useMemo(() => {
-    if (!selectedFoodId) {
-      return 'None selected';
-    }
-
-    const found = foods.find((food) => food.id === selectedFoodId);
-    return found ? found.name : `Food #${selectedFoodId}`;
-  }, [foods, selectedFoodId]);
+  const { historyDays, sevenDaySummary, calorieGoal, streak, isLoading, errorMessage, refresh } =
+    useHistorySummary(30);
 
   useFocusEffect(
     useCallback(() => {
-      refreshDashboard();
-      refreshHistory();
-    }, [refreshDashboard, refreshHistory]),
+      refresh();
+    }, [refresh]),
   );
 
-  async function onAddEntry() {
-    const grams = toPositiveNumber(gramsInput);
-
-    if (!grams || !selectedFoodId) {
-      setErrorMessage('Select a food and valid grams first.');
-      return;
-    }
-
-    try {
-      setErrorMessage(null);
-      await createFoodLogEntry({
-        date: today,
-        mealType: selectedMealType,
-        foodId: selectedFoodId,
-        quantityG: grams,
-      });
-      setGramsInput('100');
-      await refreshDashboard();
-      await refreshHistory();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to add entry');
-    }
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
-  async function onAdjustItem(itemId: number, nextQuantity: number) {
-    if (nextQuantity <= 0) {
-      await onDeleteItem(itemId);
-      return;
-    }
-
-    await updateFoodLogEntry({
-      mealItemId: itemId,
-      quantityG: nextQuantity,
-    });
-    await refreshDashboard();
-    await refreshHistory();
+  if (errorMessage) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
-  async function onDeleteItem(itemId: number) {
-    await deleteFoodLogEntry(itemId);
-    await refreshDashboard();
-    await refreshHistory();
-  }
+  const hasAnyData = historyDays.length > 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Food Log</Text>
-        <Text style={styles.subtitle}>Create, edit, and delete meal entries for today.</Text>
+        <Text style={styles.title}>History</Text>
+        <Text style={styles.subtitle}>Last 30 days</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>1) Select meal</Text>
-          <View style={styles.pillRow}>
-            {MEAL_TYPES.map((mealType) => (
-              <Pressable
-                key={mealType}
-                style={[
-                  styles.pill,
-                  selectedMealType === mealType ? styles.pillActive : undefined,
-                ]}
-                onPress={() => setSelectedMealType(mealType)}
-              >
-                <Text
-                  style={[
-                    styles.pillText,
-                    selectedMealType === mealType ? styles.pillTextActive : undefined,
-                  ]}
-                >
-                  {MEAL_LABELS[mealType]}
+        {/* Streak + goal hit badges */}
+        {hasAnyData && (
+          <View style={styles.badgeRow}>
+            <View style={styles.badge}>
+              <Text style={styles.badgeNumber}>{streak}</Text>
+              <Text style={styles.badgeLabel}>day streak 🔥</Text>
+            </View>
+            {calorieGoal > 0 && sevenDaySummary.daysLogged > 0 && (
+              <View style={[styles.badge, styles.badgeSecondary]}>
+                <Text style={styles.badgeNumber}>
+                  {sevenDaySummary.goalHitDays}/{sevenDaySummary.daysLogged}
                 </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={styles.cardTitle}>2) Search food</Text>
-          <TextInput
-            value={foodQuery}
-            onChangeText={setFoodQuery}
-            placeholder="Type food name"
-            style={styles.input}
-          />
-          <View style={styles.foodList}>
-            {foods.slice(0, 8).map((food) => (
-              <Pressable
-                key={food.id}
-                style={[styles.foodItem, selectedFoodId === food.id ? styles.foodItemActive : undefined]}
-                onPress={() => setSelectedFoodId(food.id)}
-              >
-                <Text style={styles.foodName}>{food.name}</Text>
-                <Text style={styles.foodMeta}>{food.caloriesPer100g} kcal/100g</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={styles.selectedFoodText}>Selected: {selectedFoodName}</Text>
-
-          <Text style={styles.cardTitle}>3) Enter quantity (grams)</Text>
-          <TextInput
-            value={gramsInput}
-            onChangeText={setGramsInput}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
-          <Pressable style={styles.primaryButton} onPress={onAddEntry}>
-            <Text style={styles.primaryButtonText}>Add Entry</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Today&apos;s Entries</Text>
-          {dashboard
-            ? MEAL_TYPES.map((mealType) => {
-                const meal = dashboard.meals[mealType];
-                return (
-                  <View key={mealType} style={styles.mealBlock}>
-                    <Text style={styles.mealHeading}>{MEAL_LABELS[mealType]}</Text>
-                    {meal.items.length === 0 ? (
-                      <Text style={styles.emptyText}>No items</Text>
-                    ) : (
-                      meal.items.map((item) => (
-                        <View key={item.id} style={styles.entryRow}>
-                          <View style={styles.entryInfo}>
-                            <Text style={styles.entryName}>{item.food.name}</Text>
-                            <Text style={styles.entryMeta}>
-                              {item.quantityG}g • {item.calories} kcal
-                            </Text>
-                          </View>
-                          <View style={styles.entryActions}>
-                            <Pressable
-                              style={styles.smallButton}
-                              onPress={() => onAdjustItem(item.id, item.quantityG - 10)}
-                            >
-                              <Text style={styles.smallButtonText}>-10g</Text>
-                            </Pressable>
-                            <Pressable
-                              style={styles.smallButton}
-                              onPress={() => onAdjustItem(item.id, item.quantityG + 10)}
-                            >
-                              <Text style={styles.smallButtonText}>+10g</Text>
-                            </Pressable>
-                            <Pressable style={styles.deleteButton} onPress={() => onDeleteItem(item.id)}>
-                              <Text style={styles.deleteButtonText}>Delete</Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      ))
-                    )}
-                  </View>
-                );
-              })
-            : null}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recent Days</Text>
-          {history.length === 0 ? (
-            <Text style={styles.emptyText}>No history yet.</Text>
-          ) : (
-            history.map((day) => (
-              <View key={day.date} style={styles.historyRow}>
-                <Text style={styles.historyDate}>{day.date}</Text>
-                <Text style={styles.historyMeta}>
-                  {day.totals.calories} kcal • P {day.totals.proteinG} • C {day.totals.carbsG} • F {day.totals.fatG}
-                </Text>
+                <Text style={styles.badgeLabel}>goal hit this week</Text>
               </View>
-            ))
+            )}
+          </View>
+        )}
+
+        {/* 7-day bar chart */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Last 7 Days — Calories</Text>
+          <View style={styles.chartContainer}>
+            <WeeklyCaloriesChart days={historyDays} calorieGoal={calorieGoal} />
+          </View>
+        </View>
+
+        {/* 7-day text summary */}
+        {sevenDaySummary.daysLogged > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>7-Day Summary</Text>
+            <View style={styles.statGrid}>
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>{Math.round(sevenDaySummary.avgCalories)}</Text>
+                <Text style={styles.statLabel}>avg kcal/day</Text>
+              </View>
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>{sevenDaySummary.daysLogged}</Text>
+                <Text style={styles.statLabel}>days logged</Text>
+              </View>
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>{Math.round(sevenDaySummary.avgProteinG)}g</Text>
+                <Text style={styles.statLabel}>avg protein</Text>
+              </View>
+              <View style={styles.statCell}>
+                <Text style={styles.statValue}>{Math.round(sevenDaySummary.avgCarbsG)}g</Text>
+                <Text style={styles.statLabel}>avg carbs</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Daily log list */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Daily Log</Text>
+          {historyDays.length === 0 ? (
+            <Text style={styles.emptyText}>No history yet — start logging food!</Text>
+          ) : (
+            historyDays.map((day, i) => {
+              const hitGoal = calorieGoal > 0 && day.totals.calories >= calorieGoal * 0.9;
+              const isLast = i === historyDays.length - 1;
+
+              return (
+                <View key={day.date} style={[styles.dayRow, !isLast && styles.dayRowBorder]}>
+                  <View style={styles.dayLeft}>
+                    <Text style={styles.dayDate}>{formatDate(day.date)}</Text>
+                    <Text style={styles.dayMacros}>
+                      P {Math.round(day.totals.proteinG)}g · C {Math.round(day.totals.carbsG)}g · F{' '}
+                      {Math.round(day.totals.fatG)}g
+                    </Text>
+                  </View>
+                  <View style={styles.dayRight}>
+                    <Text style={[styles.dayCals, hitGoal && styles.dayCalsHit]}>
+                      {Math.round(day.totals.calories)}
+                    </Text>
+                    <Text style={styles.dayKcal}>kcal</Text>
+                  </View>
+                </View>
+              );
+            })
           )}
         </View>
       </ScrollView>
@@ -231,196 +130,80 @@ export default function HistoryScreen() {
   );
 }
 
+function formatDate(dateStr: string): string {
+  const parts = dateStr.split('-').map(Number);
+  const d = new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+  return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: colors.danger },
+
+  title: { fontSize: 28, fontWeight: '700', color: colors.text },
+  subtitle: { marginTop: 4, marginBottom: 16, fontSize: 16, color: colors.textMuted },
+
+  badgeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  badge: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
-  },
-  container: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  subtitle: {
-    marginTop: 4,
-    marginBottom: 16,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.accentMuted,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 12,
-    marginBottom: 10,
+    borderColor: colors.accent,
+    padding: 14,
+    alignItems: 'center',
   },
-  pillRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  badgeSecondary: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+  },
+  badgeNumber: { fontSize: 26, fontWeight: '800', color: colors.text },
+  badgeLabel: { marginTop: 2, fontSize: 12, color: colors.textMuted },
+
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
     marginBottom: 12,
   },
-  pill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#FFFFFF',
-  },
-  pillActive: {
-    backgroundColor: '#0E9F6E',
-    borderColor: '#0E9F6E',
-  },
-  pillText: {
-    fontSize: 13,
-    color: '#374151',
-  },
-  pillTextActive: {
-    color: '#FFFFFF',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  sectionTitle: {
     fontSize: 15,
-    marginBottom: 10,
-  },
-  foodList: {
-    marginBottom: 8,
-  },
-  foodItem: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
-  },
-  foodItemActive: {
-    borderColor: '#0E9F6E',
-    backgroundColor: '#ECFDF5',
-  },
-  foodName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  foodMeta: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  selectedFoodText: {
-    fontSize: 13,
-    color: '#374151',
-    marginBottom: 10,
-  },
-  errorText: {
-    color: '#B91C1C',
-    marginBottom: 8,
-  },
-  primaryButton: {
-    backgroundColor: '#0E9F6E',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
     fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
   },
-  mealBlock: {
-    marginBottom: 10,
-  },
-  mealHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  entryRow: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
+  chartContainer: { marginTop: 4 },
+
+  statGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  entryInfo: {
+  statCell: {
     flex: 1,
-    paddingRight: 8,
-  },
-  entryName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  entryMeta: {
-    marginTop: 2,
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  entryActions: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  smallButton: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  smallButtonText: {
-    fontSize: 12,
-    color: '#374151',
-  },
-  deleteButton: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  deleteButtonText: {
-    fontSize: 12,
-    color: '#B91C1C',
-    fontWeight: '600',
-  },
-  historyRow: {
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    minWidth: '40%',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
+    padding: 12,
   },
-  historyDate: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  historyMeta: {
-    fontSize: 14,
-    color: '#374151',
-  },
+  statValue: { fontSize: 20, fontWeight: '700', color: colors.text },
+  statLabel: { marginTop: 2, fontSize: 12, color: colors.textMuted },
+
+  emptyText: { color: colors.textMuted, fontSize: 14 },
+
+  dayRow: { paddingVertical: 12, flexDirection: 'row', alignItems: 'center' },
+  dayRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  dayLeft: { flex: 1 },
+  dayDate: { fontSize: 14, fontWeight: '600', color: colors.text },
+  dayMacros: { marginTop: 2, fontSize: 12, color: colors.textMuted },
+  dayRight: { alignItems: 'flex-end' },
+  dayCals: { fontSize: 18, fontWeight: '700', color: colors.text },
+  dayCalsHit: { color: colors.accent },
+  dayKcal: { fontSize: 11, color: colors.textMuted },
 });
+
+
