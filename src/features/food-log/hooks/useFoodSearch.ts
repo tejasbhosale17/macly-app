@@ -16,13 +16,22 @@ export function useFoodSearch(): FoodSearchState {
   const [foods, setFoods] = useState<Food[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const performSearch = useCallback(async (searchQuery: string) => {
+    const trimmedQuery = searchQuery.trim();
+
+    if (trimmedQuery.length < 2) {
+      setFoods([]);
+      setErrorMessage(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setErrorMessage(null);
-      const results = await listFoods(searchQuery);
+      const results = await listFoods(trimmedQuery);
       setFoods(results);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to search foods');

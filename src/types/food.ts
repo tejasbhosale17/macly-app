@@ -5,6 +5,8 @@ export type Macros = {
   fatG: number;
 };
 
+export type ServingUnit = 'grams' | 'count';
+
 export type Food = {
   id: number;
   name: string;
@@ -12,14 +14,14 @@ export type Food = {
   proteinPer100g: number;
   carbsPer100g: number;
   fatPer100g: number;
+  servingUnit: ServingUnit;
+  gramsPerUnit: number | null;
+  servingLabel: string | null;
   isCustom: boolean;
   createdAt: string;
 };
 
-export type NewCustomFood = Omit<
-  Food,
-  'id' | 'createdAt' | 'isCustom'
->;
+export type NewCustomFood = Omit<Food, 'id' | 'createdAt' | 'isCustom'>;
 
 export type SeedFoodInput = {
   name: string;
@@ -27,4 +29,7 @@ export type SeedFoodInput = {
   proteinPer100g: number;
   carbsPer100g: number;
   fatPer100g: number;
+  servingUnit?: ServingUnit;
+  gramsPerUnit?: number | null;
+  servingLabel?: string | null;
 };

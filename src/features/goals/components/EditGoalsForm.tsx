@@ -1,5 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { colors } from '../../../theme/colors';
+
 export type GoalFormValues = {
   calories: string;
   proteinG: string;
@@ -67,33 +69,33 @@ export function EditGoalsForm({ values, onChange, disabled = false }: EditGoalsF
 
 const styles = StyleSheet.create({
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 14,
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 8,
   },
   label: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textMuted,
     marginBottom: 6,
     marginTop: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
+    backgroundColor: colors.input,
+    color: colors.text,
   },
 });

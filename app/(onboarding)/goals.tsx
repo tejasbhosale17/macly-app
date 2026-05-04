@@ -4,6 +4,8 @@ import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View 
 
 import { DEFAULT_DAILY_GOALS } from '../../src/constants/macros';
 import { upsertMacroGoals } from '../../src/repositories/macroGoalsRepository';
+import { getGoalTypeLabel } from '../../src/utils/goalCalculator';
+import type { GoalType } from '../../src/types';
 
 type GoalForm = {
   calories: string;
@@ -20,6 +22,19 @@ function isPositiveNumber(value: string): boolean {
 export default function GoalsOnboardingScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const suggestedCalories = typeof params.suggestedCalories === 'string' ? params.suggestedCalories : null;
+  const suggestedProtein = typeof params.suggestedProtein === 'string' ? params.suggestedProtein : null;
+  const suggestedCarbs = typeof params.suggestedCarbs === 'string' ? params.suggestedCarbs : null;
+  const suggestedFat = typeof params.suggestedFat === 'string' ? params.suggestedFat : null;
+  const tdeeParam = typeof params.tdee === 'string' ? params.tdee : null;
+  const goalTypeParam = typeof params.goalType === 'string' ? params.goalType : null;
+  const goalType: GoalType =
+    goalTypeParam === 'fat-loss' ||
+    goalTypeParam === 'maintenance' ||
+    goalTypeParam === 'lean-bulk' ||
+    goalTypeParam === 'muscle-gain'
+      ? goalTypeParam
+      : 'maintenance';
   const [form, setForm] = useState<GoalForm>({
     calories: String(DEFAULT_DAILY_GOALS.calories),
     proteinG: String(DEFAULT_DAILY_GOALS.proteinG),
@@ -32,18 +47,18 @@ export default function GoalsOnboardingScreen() {
 
   // Initialize with suggested values from route params
   useEffect(() => {
-    if (params.suggestedCalories) {
+    if (suggestedCalories && suggestedProtein && suggestedCarbs && suggestedFat) {
       setForm({
-        calories: params.suggestedCalories as string,
-        proteinG: params.suggestedProtein as string,
-        carbsG: params.suggestedCarbs as string,
-        fatG: params.suggestedFat as string,
+        calories: suggestedCalories,
+        proteinG: suggestedProtein,
+        carbsG: suggestedCarbs,
+        fatG: suggestedFat,
       });
-      if (params.tdee) {
-        setTdee(Number(params.tdee));
+      if (tdeeParam) {
+        setTdee(Number(tdeeParam));
       }
     }
-  }, [params]);
+  }, [suggestedCalories, suggestedProtein, suggestedCarbs, suggestedFat, tdeeParam]);
 
   const canSave =
     isPositiveNumber(form.calories) &&
@@ -65,6 +80,7 @@ export default function GoalsOnboardingScreen() {
         proteinG: Number(form.proteinG),
         carbsG: Number(form.carbsG),
         fatG: Number(form.fatG),
+        goalType,
       });
       router.replace('/(tabs)');
     } catch (error) {
@@ -88,6 +104,7 @@ export default function GoalsOnboardingScreen() {
           <View style={styles.tdeeCard}>
             <Text style={styles.tdeeLabel}>Your Daily Calorie Need (TDEE)</Text>
             <Text style={styles.tdeeValue}>{tdee} calories</Text>
+            <Text style={styles.tdeeGoal}>Goal: {getGoalTypeLabel(goalType)}</Text>
             <Text style={styles.tdeeNote}>
               Goals below are adjusted based on your selected goal type.
             </Text>
@@ -186,6 +203,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     lineHeight: 16,
+  },
+  tdeeGoal: {
+    fontSize: 13,
+    color: '#065F46',
+    fontWeight: '600',
+    marginBottom: 8,
   },
   label: {
     fontSize: 14,

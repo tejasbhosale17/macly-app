@@ -1,6 +1,4 @@
-import type { ActivityLevel, Gender } from '../types';
-
-export type GoalType = 'fat-loss' | 'maintenance' | 'lean-bulk' | 'muscle-gain';
+import type { ActivityLevel, Gender, GoalType } from '../types';
 
 export interface AnthropometricInput {
   gender: Gender;

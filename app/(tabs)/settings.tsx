@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -16,6 +16,7 @@ import {
 } from '../../src/features/goals/components/EditGoalsForm';
 import { getMacroGoals, upsertMacroGoals } from '../../src/repositories/macroGoalsRepository';
 import { getUserProfile, upsertUserProfile } from '../../src/repositories/userProfileRepository';
+import { colors } from '../../src/theme/colors';
 import type { ActivityLevel, Gender } from '../../src/types';
 
 type ProfileFormValues = {
@@ -55,8 +56,10 @@ export default function SettingsScreen() {
   const [existingActivityLevel, setExistingActivityLevel] = useState<ActivityLevel | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [saved, setSaved] = useState<boolean>(false);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+  const [isSavingGoals, setIsSavingGoals] = useState<boolean>(false);
+  const [savedProfile, setSavedProfile] = useState<boolean>(false);
+  const [savedGoals, setSavedGoals] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -96,30 +99,43 @@ export default function SettingsScreen() {
     loadData();
   }, [loadData]);
 
-  const isFormValid = useMemo(() => {
-    return (
-      profile.name.trim().length >= 2 &&
-      isOptionalPositiveNumber(profile.ageYears) &&
-      isOptionalPositiveNumber(profile.weightKg) &&
-      isOptionalPositiveNumber(profile.heightCm) &&
-      toPositiveNumber(goals.calories) !== null &&
-      toPositiveNumber(goals.proteinG) !== null &&
-      toPositiveNumber(goals.carbsG) !== null &&
-      toPositiveNumber(goals.fatG) !== null
-    );
-  }, [goals, profile]);
-
   function updateProfile<K extends keyof ProfileFormValues>(key: K, value: string): void {
     setProfile((prev) => ({ ...prev, [key]: value }));
-    setSaved(false);
+    setSavedProfile(false);
     setErrorMessage(null);
   }
 
-  async function onSave(): Promise<void> {
-    if (!isFormValid) {
+  async function onSaveProfile(): Promise<void> {
+    if (
+      profile.name.trim().length < 2 ||
+      !isOptionalPositiveNumber(profile.ageYears) ||
+      !isOptionalPositiveNumber(profile.weightKg) ||
+      !isOptionalPositiveNumber(profile.heightCm)
+    ) {
       return;
     }
 
+    try {
+      setIsSavingProfile(true);
+      await upsertUserProfile({
+        name: profile.name.trim(),
+        age: toPositiveNumber(profile.ageYears),
+        weightKg: toPositiveNumber(profile.weightKg),
+        heightCm: toPositiveNumber(profile.heightCm),
+        gender: existingGender,
+        activityLevel: existingActivityLevel,
+      });
+      setSavedProfile(true);
+      setErrorMessage(null);
+    } catch (error) {
+      setSavedProfile(false);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function onSaveGoals(): Promise<void> {
     const calories = toPositiveNumber(goals.calories);
     const proteinG = toPositiveNumber(goals.proteinG);
     const carbsG = toPositiveNumber(goals.carbsG);
@@ -130,32 +146,20 @@ export default function SettingsScreen() {
     }
 
     try {
-      setIsSaving(true);
-
-      await Promise.all([
-        upsertUserProfile({
-          name: profile.name.trim(),
-          age: toPositiveNumber(profile.ageYears),
-          weightKg: toPositiveNumber(profile.weightKg),
-          heightCm: toPositiveNumber(profile.heightCm),
-          gender: existingGender,
-          activityLevel: existingActivityLevel,
-        }),
-        upsertMacroGoals({
-          calories,
-          proteinG,
-          carbsG,
-          fatG,
-        }),
-      ]);
-
-      setSaved(true);
+      setIsSavingGoals(true);
+      await upsertMacroGoals({
+        calories,
+        proteinG,
+        carbsG,
+        fatG,
+      });
+      setSavedGoals(true);
       setErrorMessage(null);
     } catch (error) {
-      setSaved(false);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to save settings');
+      setSavedGoals(false);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save goals');
     } finally {
-      setIsSaving(false);
+      setIsSavingGoals(false);
     }
   }
 
@@ -173,9 +177,10 @@ export default function SettingsScreen() {
             value={profile.name}
             onChangeText={(value) => updateProfile('name', value)}
             placeholder="Enter your name"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             autoCapitalize="words"
-            editable={!isSaving}
+            editable={!isSavingProfile}
             returnKeyType="done"
           />
 
@@ -184,9 +189,10 @@ export default function SettingsScreen() {
             value={profile.ageYears}
             onChangeText={(value) => updateProfile('ageYears', value)}
             placeholder="Optional"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             keyboardType="numeric"
-            editable={!isSaving}
+            editable={!isSavingProfile}
             returnKeyType="done"
           />
 
@@ -195,9 +201,10 @@ export default function SettingsScreen() {
             value={profile.weightKg}
             onChangeText={(value) => updateProfile('weightKg', value)}
             placeholder="Optional"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             keyboardType="numeric"
-            editable={!isSaving}
+            editable={!isSavingProfile}
             returnKeyType="done"
           />
 
@@ -206,29 +213,42 @@ export default function SettingsScreen() {
             value={profile.heightCm}
             onChangeText={(value) => updateProfile('heightCm', value)}
             placeholder="Optional"
+            placeholderTextColor={colors.textMuted}
             style={styles.input}
             keyboardType="numeric"
-            editable={!isSaving}
+            editable={!isSavingProfile}
             returnKeyType="done"
           />
+
+          <Pressable
+            style={[styles.saveButton, isSavingProfile && styles.saveButtonDisabled]}
+            onPress={() => {
+              void onSaveProfile();
+            }}
+            disabled={isSavingProfile}
+          >
+            <Text style={styles.saveButtonText}>{isSavingProfile ? 'Saving...' : 'Save Profile'}</Text>
+          </Pressable>
+
+          {savedProfile ? <Text style={styles.savedText}>Profile saved locally.</Text> : null}
         </View>
 
-        <EditGoalsForm values={goals} onChange={setGoals} disabled={isSaving} />
+        <EditGoalsForm values={goals} onChange={setGoals} disabled={isSavingGoals} />
 
         {isLoading ? <Text style={styles.helpText}>Loading current settings...</Text> : null}
 
         <Pressable
-          style={[styles.saveButton, (!isFormValid || isSaving) && styles.saveButtonDisabled]}
+          style={[styles.saveButton, isSavingGoals && styles.saveButtonDisabled]}
           onPress={() => {
-            void onSave();
+            void onSaveGoals();
           }}
-          disabled={!isFormValid || isSaving}
+          disabled={isSavingGoals}
         >
-          <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Settings'}</Text>
+          <Text style={styles.saveButtonText}>{isSavingGoals ? 'Saving...' : 'Save Goals'}</Text>
         </Pressable>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-        {saved ? <Text style={styles.savedText}>Saved locally.</Text> : null}
+        {savedGoals ? <Text style={styles.savedText}>Goals saved locally.</Text> : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -237,7 +257,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
   container: {
     paddingHorizontal: 16,
@@ -247,46 +267,46 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
   subtitle: {
     marginTop: 4,
     marginBottom: 16,
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   section: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 14,
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 8,
   },
   label: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textMuted,
     marginBottom: 6,
     marginTop: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
-    color: '#111827',
+    backgroundColor: colors.input,
+    color: colors.text,
   },
   saveButton: {
-    backgroundColor: '#0E9F6E',
+    backgroundColor: colors.accent,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -296,25 +316,25 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   saveButtonText: {
-    color: '#FFFFFF',
+    color: '#052E16',
     fontSize: 16,
     fontWeight: '700',
   },
   helpText: {
     marginBottom: 10,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   errorText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#B91C1C',
+    color: colors.danger,
     textAlign: 'center',
   },
   savedText: {
     marginTop: 10,
     fontSize: 14,
-    color: '#065F46',
+    color: colors.accentText,
     textAlign: 'center',
   },
 });

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../../theme/colors';
 import type { MacroProgressMetric } from '../../types/log';
 
 interface MacroProgressCardProps {
@@ -24,26 +25,26 @@ export function MacroProgressCard({ title, metric, unit = 'kcal' }: MacroProgres
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 16,
     marginBottom: 16,
   },
   cardTitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   cardValue: {
     marginTop: 6,
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
   cardSubValue: {
     marginTop: 6,
     fontSize: 13,
-    color: '#374151',
+    color: colors.textMuted,
   },
 });

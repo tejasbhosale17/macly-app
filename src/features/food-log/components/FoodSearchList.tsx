@@ -1,14 +1,21 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../../../theme/colors';
 import type { Food } from '../../../types/food';
 
 interface FoodSearchListProps {
   foods: Food[];
   isLoading: boolean;
   onSelectFood: (food: Food) => void;
+  emptyMessage?: string;
 }
 
-export function FoodSearchList({ foods, isLoading, onSelectFood }: FoodSearchListProps) {
+export function FoodSearchList({
+  foods,
+  isLoading,
+  onSelectFood,
+  emptyMessage = 'No foods found',
+}: FoodSearchListProps) {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -20,7 +27,7 @@ export function FoodSearchList({ foods, isLoading, onSelectFood }: FoodSearchLis
   if (foods.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>No foods found</Text>
+        <Text style={styles.emptyText}>{emptyMessage}</Text>
       </View>
     );
   }
@@ -52,16 +59,16 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   foodItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
   },
   pressed: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.pressed,
   },
   foodInfo: {
     gap: 4,
@@ -69,10 +76,10 @@ const styles = StyleSheet.create({
   foodName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   foodMacros: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
 });

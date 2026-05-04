@@ -17,6 +17,7 @@ import { MEAL_LABELS } from '../../src/constants/meals';
 import { getOrCreateDailyLog } from '../../src/repositories/dailyLogRepository';
 import { getOrCreateMeal } from '../../src/repositories/mealRepository';
 import { useSavedMeals } from '../../src/features/saved-meals/hooks/useSavedMeals';
+import { colors } from '../../src/theme/colors';
 import type { MealType } from '../../src/types';
 
 function parseMealType(value: string | string[] | undefined): MealType {
@@ -136,7 +137,7 @@ export default function SavedMealsScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#0E9F6E" />
+            <Ionicons name="chevron-back" size={24} color={colors.accent} />
           </Pressable>
           <Text style={styles.title}>Saved Meals</Text>
           <View style={styles.rightSpacer} />
@@ -234,7 +235,7 @@ export default function SavedMealsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
   container: {
     paddingHorizontal: 16,
@@ -250,28 +251,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
   rightSpacer: {
     width: 24,
   },
   contextCard: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.accentMuted,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: '#1F5132',
     padding: 12,
     marginBottom: 16,
   },
   contextLabel: {
     fontSize: 12,
-    color: '#065F46',
+    color: colors.accentText,
   },
   contextValue: {
     marginTop: 4,
     fontSize: 14,
     fontWeight: '600',
-    color: '#064E3B',
+    color: colors.text,
   },
   section: {
     marginBottom: 18,
@@ -279,22 +280,22 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.input,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#111827',
+    color: colors.text,
   },
   primaryButton: {
     marginTop: 10,
-    backgroundColor: '#0E9F6E',
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -302,19 +303,21 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#052E16',
   },
   secondaryButton: {
     marginTop: 10,
-    backgroundColor: '#111827',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.text,
   },
   disabledButton: {
     opacity: 0.5,
@@ -322,25 +325,25 @@ const styles = StyleSheet.create({
   hintText: {
     marginTop: 8,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   centerRow: {
     paddingVertical: 16,
     alignItems: 'center',
   },
   errorText: {
-    color: '#B91C1C',
+    color: colors.danger,
     fontSize: 13,
   },
   emptyText: {
-    color: '#6B7280',
+    color: colors.textMuted,
     fontSize: 13,
   },
   savedMealCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 12,
     marginBottom: 10,
   },
@@ -352,18 +355,18 @@ const styles = StyleSheet.create({
   savedMealName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     marginRight: 12,
   },
   savedMealMeta: {
     marginTop: 6,
     fontSize: 12,
-    color: '#374151',
+    color: colors.textMuted,
   },
   previewText: {
     marginTop: 6,
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
 });

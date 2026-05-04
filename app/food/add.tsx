@@ -19,6 +19,19 @@ import { getOrCreateDailyLog } from '../../src/repositories/dailyLogRepository';
 import { getOrCreateMeal } from '../../src/repositories/mealRepository';
 import { useDashboardData } from '../../src/hooks/useDashboardData';
 import { useMealActions } from '../../src/features/food-log/hooks/useMealActions';
+import { getDashboardData } from '../../src/services/logService';
+import {
+  getMealSuggestions,
+  parseFoodInput,
+  type ParsedFoodEntry,
+} from '../../src/services/aiNutritionService';
+import { colors } from '../../src/theme/colors';
+import {
+  convertGramsToQuantity,
+  convertQuantityToGrams,
+  formatFoodQuantity,
+  getQuantityInputLabel,
+} from '../../src/utils/foodServing';
 import type { Food, MealType } from '../../src/types';
 
 export default function AddFoodScreen() {
@@ -34,6 +47,11 @@ export default function AddFoodScreen() {
   const [showAddFoodSheet, setShowAddFoodSheet] = useState<boolean>(false);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editQuantity, setEditQuantity] = useState<string>('');
+  const [aiInput, setAiInput] = useState<string>('');
+  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [aiMatchedItems, setAiMatchedItems] = useState<ParsedFoodEntry[]>([]);
+  const [aiUnmatchedItems, setAiUnmatchedItems] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,6 +108,44 @@ export default function AddFoodScreen() {
     ]);
   };
 
+  const handleAiParseAndAdd = async () => {
+    if (!aiInput.trim()) {
+      return;
+    }
+
+    try {
+      setIsAiLoading(true);
+
+      const parsed = await parseFoodInput(aiInput);
+
+      if (parsed.matched.length === 0) {
+        setAiMatchedItems([]);
+        setAiUnmatchedItems(parsed.unmatched);
+        Alert.alert('No items recognized', 'Try inputs like: 3 eggs and 150g rice');
+        return;
+      }
+
+      const dailyLog = await getOrCreateDailyLog(date);
+      const mealEntity = await getOrCreateMeal(dailyLog.id, mealType);
+
+      for (const entry of parsed.matched) {
+        await addFoodToMeal(mealEntity.id, entry.food, entry.quantityG);
+      }
+
+      await refresh();
+      const latestDashboard = await getDashboardData(date);
+
+      setAiMatchedItems(parsed.matched);
+      setAiUnmatchedItems(parsed.unmatched);
+      setAiSuggestions(await getMealSuggestions(latestDashboard));
+      setAiInput('');
+    } catch (error) {
+      Alert.alert('AI Add Failed', error instanceof Error ? error.message : 'Unable to process AI food input');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -118,7 +174,7 @@ export default function AddFoodScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#0E9F6E" />
+            <Ionicons name="chevron-back" size={24} color={colors.accent} />
           </Pressable>
           <Text style={styles.title}>{MEAL_LABELS[mealType]}</Text>
           <View style={{ width: 24 }} />
@@ -134,6 +190,64 @@ export default function AddFoodScreen() {
           </Text>
         </View>
 
+        <View style={styles.aiCard}>
+          <Text style={styles.aiTitle}>AI Quick Add</Text>
+          <Text style={styles.aiHint}>Try: 3 eggs and 150g rice</Text>
+          <TextInput
+            style={styles.aiInput}
+            value={aiInput}
+            onChangeText={setAiInput}
+            placeholder="Type meal items in plain English"
+            placeholderTextColor={colors.textMuted}
+            editable={!isAiLoading}
+          />
+
+          <Pressable
+            style={[styles.aiButton, isAiLoading && styles.aiButtonDisabled]}
+            onPress={handleAiParseAndAdd}
+            disabled={isAiLoading}
+          >
+            {isAiLoading ? (
+              <ActivityIndicator size="small" color="#052E16" />
+            ) : (
+              <Text style={styles.aiButtonText}>Parse And Add</Text>
+            )}
+          </Pressable>
+
+          {aiMatchedItems.length > 0 ? (
+            <View style={styles.aiResultSection}>
+              <Text style={styles.aiResultTitle}>Added</Text>
+              {aiMatchedItems.map((item) => (
+                <Text key={`${item.food.id}-${item.parsedText}`} style={styles.aiResultText}>
+                  • {item.interpretedAs}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {aiUnmatchedItems.length > 0 ? (
+            <View style={styles.aiResultSection}>
+              <Text style={styles.aiResultTitle}>Couldn&apos;t Match</Text>
+              {aiUnmatchedItems.map((item) => (
+                <Text key={item} style={styles.aiResultTextMuted}>
+                  • {item}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {aiSuggestions.length > 0 ? (
+            <View style={styles.aiResultSection}>
+              <Text style={styles.aiResultTitle}>Next Meal Suggestions</Text>
+              {aiSuggestions.map((suggestion, index) => (
+                <Text key={`${index}-${suggestion}`} style={styles.aiResultText}>
+                  • {suggestion}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
         {/* Food Items */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Items</Text>
@@ -145,7 +259,7 @@ export default function AddFoodScreen() {
               <View key={item.id} style={styles.foodItem}>
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>{item.food.name}</Text>
-                  <Text style={styles.itemQuantity}>{item.quantityG}g</Text>
+                  <Text style={styles.itemQuantity}>{formatFoodQuantity(item.food, item.quantityG)}</Text>
                   <Text style={styles.itemMacros}>
                     {item.calories} kcal • P {item.proteinG}g • C {item.carbsG}g • F {item.fatG}g
                   </Text>
@@ -155,7 +269,7 @@ export default function AddFoodScreen() {
                   <Pressable
                     onPress={() => {
                       setEditingItemId(item.id);
-                      setEditQuantity(item.quantityG.toString());
+                      setEditQuantity(convertGramsToQuantity(item.food, item.quantityG).toString());
                     }}
                     disabled={isActionLoading}
                   >
@@ -184,12 +298,14 @@ export default function AddFoodScreen() {
                   <>
                     <Text style={styles.editModalLabel}>{item.food.name}</Text>
 
+                    <Text style={styles.editModalLabel}>{getQuantityInputLabel(item.food)}</Text>
+
                     <TextInput
                       style={styles.editInput}
-                      placeholder="Quantity (g)"
+                      placeholder={item.food.servingUnit === 'count' ? '1' : '100'}
                       value={editQuantity}
                       onChangeText={setEditQuantity}
-                      keyboardType="number-pad"
+                      keyboardType="decimal-pad"
                       autoFocus
                     />
 
@@ -207,7 +323,11 @@ export default function AddFoodScreen() {
                       <Pressable
                         style={[styles.editSaveButton, isActionLoading && styles.editSaveButtonDisabled]}
                         onPress={() =>
-                          handleEditItem(editingItemId, item.food, parseInt(editQuantity, 10))
+                          handleEditItem(
+                            editingItemId,
+                            item.food,
+                            convertQuantityToGrams(item.food, Number(editQuantity)),
+                          )
                         }
                         disabled={isActionLoading}
                       >
@@ -266,7 +386,7 @@ export default function AddFoodScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: colors.background,
   },
   container: {
     paddingHorizontal: 16,
@@ -279,7 +399,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#B91C1C',
+    color: colors.danger,
   },
   header: {
     flexDirection: 'row',
@@ -290,30 +410,93 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
   date: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textMuted,
     marginBottom: 16,
   },
   summary: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 16,
     marginBottom: 16,
   },
   summaryLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   summaryValue: {
     marginTop: 6,
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
+  },
+  aiCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginBottom: 16,
+  },
+  aiTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  aiHint: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  aiInput: {
+    marginTop: 10,
+    backgroundColor: colors.input,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+  },
+  aiButton: {
+    marginTop: 10,
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  aiButtonDisabled: {
+    opacity: 0.5,
+  },
+  aiButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#052E16',
+  },
+  aiResultSection: {
+    marginTop: 10,
+  },
+  aiResultTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  aiResultText: {
+    fontSize: 12,
+    color: colors.text,
+    marginBottom: 2,
+  },
+  aiResultTextMuted: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginBottom: 2,
   },
   section: {
     marginBottom: 20,
@@ -321,20 +504,20 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 10,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textMuted,
     textAlign: 'center',
     paddingVertical: 16,
   },
   foodItem: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     padding: 12,
     marginBottom: 8,
     flexDirection: 'row',
@@ -347,17 +530,17 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text,
   },
   itemQuantity: {
     marginTop: 4,
     fontSize: 13,
-    color: '#6B7280',
+    color: colors.textMuted,
   },
   itemMacros: {
     marginTop: 4,
     fontSize: 12,
-    color: '#374151',
+    color: colors.textMuted,
   },
   itemActions: {
     flexDirection: 'row',
@@ -375,7 +558,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   editModalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 20,
@@ -384,23 +567,23 @@ const styles = StyleSheet.create({
   editModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
     marginBottom: 4,
   },
   editModalLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textMuted,
     marginBottom: 12,
   },
   editInput: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.input,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
+    color: colors.text,
     marginBottom: 16,
   },
   editActions: {
@@ -409,7 +592,7 @@ const styles = StyleSheet.create({
   },
   editCancelButton: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -417,11 +600,11 @@ const styles = StyleSheet.create({
   editCancelButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.text,
   },
   editSaveButton: {
     flex: 1,
-    backgroundColor: '#0E9F6E',
+    backgroundColor: colors.accent,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -432,14 +615,14 @@ const styles = StyleSheet.create({
   editSaveButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#052E16',
   },
   actionButtons: {
     marginTop: 12,
     gap: 8,
   },
   addButton: {
-    backgroundColor: '#0E9F6E',
+    backgroundColor: colors.accent,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -451,13 +634,13 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#052E16',
   },
   savedMealsButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
     paddingVertical: 11,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -468,6 +651,6 @@ const styles = StyleSheet.create({
   savedMealsButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text,
   },
 });

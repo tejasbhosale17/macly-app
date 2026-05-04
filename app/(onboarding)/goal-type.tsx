@@ -6,10 +6,9 @@ import {
   calculateMacroGoals,
   getGoalDescription,
   getGoalTypeLabel,
-  type GoalType,
 } from '../../src/utils/goalCalculator';
 import { getUserProfile } from '../../src/repositories/userProfileRepository';
-import type { ActivityLevel } from '../../src/types';
+import type { ActivityLevel, GoalType } from '../../src/types';
 
 const GOAL_OPTIONS: GoalType[] = ['fat-loss', 'maintenance', 'lean-bulk', 'muscle-gain'];
 const ACTIVITY_LEVELS: ActivityLevel[] = ['sedentary', 'light', 'moderate', 'active', 'very_active'];
@@ -81,6 +80,7 @@ export default function GoalTypeScreen() {
       router.push({
         pathname: '/(onboarding)/goals',
         params: {
+          goalType: selectedGoal,
           suggestedCalories: String(suggestions.calories),
           suggestedProtein: String(suggestions.proteinG),
           suggestedCarbs: String(suggestions.carbsG),
