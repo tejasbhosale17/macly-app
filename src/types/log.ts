@@ -1,5 +1,6 @@
 import type { Macros } from './food';
 import type { MealType, MealWithItems } from './meal';
+import type { GoalType } from './user';
 
 export type DailyLog = {
   id: number;
@@ -27,6 +28,7 @@ export type DashboardData = {
   meals: Record<MealType, MealWithItems>;
   totals: Macros;
   progress: GoalProgress;
+  goalType: GoalType | null;
 };
 
 export type HistoryDay = {

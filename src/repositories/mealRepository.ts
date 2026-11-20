@@ -65,6 +65,9 @@ export async function listMealItemsForDay(dailyLogId: number): Promise<MealItemW
        f.protein_per_100g,
        f.carbs_per_100g,
        f.fat_per_100g,
+      f.serving_unit,
+      f.grams_per_unit,
+      f.serving_label,
        f.is_custom,
        f.created_at as food_created_at
      FROM meal_item mi
@@ -93,6 +96,9 @@ export async function listMealItemsForDay(dailyLogId: number): Promise<MealItemW
       proteinPer100g: row.protein_per_100g,
       carbsPer100g: row.carbs_per_100g,
       fatPer100g: row.fat_per_100g,
+      servingUnit: row.serving_unit ?? 'grams',
+      gramsPerUnit: row.grams_per_unit,
+      servingLabel: row.serving_label,
       isCustom: row.is_custom === 1,
       createdAt: row.food_created_at,
     },

@@ -9,6 +9,8 @@ export default function OnboardingLayout() {
       }}
     >
       <Stack.Screen name="welcome" options={{ title: 'Welcome' }} />
+      <Stack.Screen name="anthropometrics" options={{ title: 'Your Info' }} />
+      <Stack.Screen name="goal-type" options={{ title: 'Your Goal' }} />
       <Stack.Screen name="goals" options={{ title: 'Daily Goals' }} />
     </Stack>
   );

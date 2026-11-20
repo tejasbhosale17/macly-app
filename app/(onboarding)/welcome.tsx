@@ -21,7 +21,7 @@ export default function WelcomeScreen() {
       setIsSaving(true);
       setErrorMessage(null);
       await upsertUserProfile({ name: name.trim() });
-      router.push('/(onboarding)/goals');
+      router.push('/(onboarding)/anthropometrics');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save profile');
     } finally {

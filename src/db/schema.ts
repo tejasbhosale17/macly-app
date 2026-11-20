@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS macro_goals (
   protein_g REAL NOT NULL,
   carbs_g REAL NOT NULL,
   fat_g REAL NOT NULL,
+  goal_type TEXT NOT NULL DEFAULT 'maintenance' CHECK(goal_type IN ('fat-loss','maintenance','lean-bulk','muscle-gain')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -30,6 +31,9 @@ CREATE TABLE IF NOT EXISTS food (
   protein_per_100g REAL NOT NULL,
   carbs_per_100g REAL NOT NULL,
   fat_per_100g REAL NOT NULL,
+  serving_unit TEXT NOT NULL DEFAULT 'grams' CHECK(serving_unit IN ('grams','count')),
+  grams_per_unit REAL,
+  serving_label TEXT,
   is_custom INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

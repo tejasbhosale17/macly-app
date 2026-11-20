@@ -77,6 +77,7 @@ export async function getDashboardData(date: string): Promise<DashboardData> {
     meals,
     totals,
     progress: calculateGoalProgress(totals, goalValues),
+    goalType: goals?.goalType ?? null,
   };
 }
 

@@ -7,6 +7,8 @@ export type ActivityLevel =
   | 'active'
   | 'very_active';
 
+export type GoalType = 'fat-loss' | 'maintenance' | 'lean-bulk' | 'muscle-gain';
+
 export type UserProfile = {
   id: number;
   name: string;
@@ -35,6 +37,7 @@ export type MacroGoals = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  goalType: GoalType;
   updatedAt: string;
 };
 
@@ -43,4 +46,5 @@ export type UpsertMacroGoalsInput = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  goalType?: GoalType;
 };
